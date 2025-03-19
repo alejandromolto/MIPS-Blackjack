@@ -177,25 +177,25 @@ beq $t1, $t2, spades
 
 clubs:
 la $a0, ofclubs
-li $v0, 1
+li $v0, 4
 syscall
 jr $ra
 
 diamonds:
 la $a0, ofdiamonds
-li $v0, 1
+li $v0, 4
 syscall
 jr $ra
 
 hearts:
 la $a0, ofhearts
-li $v0, 1
+li $v0, 4
 syscall
 jr $ra
 
 spades:
 la $a0, ofspades
-li $v0, 1
+li $v0, 4
 syscall
 jr $ra
 
