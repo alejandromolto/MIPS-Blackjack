@@ -14,17 +14,18 @@ lenguaje_mensaje: .asciiz "\n\n**MENÚ DE IDIOMA**\n\n(1) Inglés\n(2) Español 
 language_message: .asciiz "\n\n**LANGUAGE MENU**\n\n(1) English\n(2) Spanish \n(3) Exit\n\nChoose your option: "
 opcion_invalida: .asciiz  "\nPorfavor, elige una opción válida: "
 invalid_option: .asciiz "\nPlease choose a valid option: "
-game_starting: .asciiz "\n The match is going to start. The dealer is handling the cards..."
-empezando_juego: .asciiz "\n La partida va a comenzar. El croupier está barajando las cartas..."
+game_starting: .asciiz "\nThe match is going to start. The dealer is handling the cards..."
+empezando_juego: .asciiz "\nLa partida va a comenzar. El croupier está barajando las cartas..."
 dialogue: .asciiz ">"
-ofclubs: .asciiz "of clubs"
-ofhearts: .asciiz "of hearts"
-ofdiamonds: .asciiz "of diamonds"
-ofspades: .asciiz "of spades"
-depicas: .asciiz "de picas"
-decorazones: .asciiz "de corazones"
-dediamantes: .asciiz "de diamantes"
-deespadas: .asciiz "de espadas"
+yougot: .asciiz "\nYou have got the "
+ofclubs: .asciiz " of clubs"
+ofhearts: .asciiz " of hearts"
+ofdiamonds: .asciiz " of diamonds"
+ofspades: .asciiz " of spades"
+depicas: .asciiz " de picas"
+decorazones: .asciiz " de corazones"
+dediamantes: .asciiz " de diamantes"
+deespadas: .asciiz " de espadas"
 
 
 
@@ -147,11 +148,10 @@ game:
 	## Poker cards must be confidential so, firstly it shows the player one	its cards and then it does the same with player two.
 	## Player one cards (stored in $s1, $s2)
 	
+	move $a0, $s1	
+	jal TranslateCard
 	move $a0, $s1
-	
-	
-		
-			
+	jal TranslateCard	
 
 
 exit:
@@ -159,16 +159,31 @@ exit:
 	syscall
 
 
+
+
+
 ## SUBRUTINES
 
-TranslateCards:
+
+TranslateCard: # This function receives a card into $a0 and prints out the card
+
+move $a1, $a0
+
+la $a0, yougot
+li $v0, 4
+syscall
+
+andi $t1, $a1, 0x0000FFFF
+move $a0, $t1
+li $v0, 1
+syscall
 
 li $t2, 1
 li $t3, 2
 li $t4, 3
 li $t5, 4
 
-srl $t1, $a0, 16
+srl $t1, $a1, 16
 
 beq $t1, $t2, clubs
 beq $t1, $t2, diamonds
@@ -198,7 +213,6 @@ la $a0, ofspades
 li $v0, 4
 syscall
 jr $ra
-
 
 
 
@@ -246,13 +260,13 @@ li $a0, 0
 li $a1, 13
 li $v0, 42
 syscall        	 	# This syscall generates a random number between 0 and 12 inclusive
-addi $t1, $a0, 2	# Now the function adds 1 (so the range is between 2-14) and it passes the value to the temporal register $t1.
+addi $t1, $v0, 2	# Now the function adds 1 (so the range is between 2-14) and it passes the value to the temporal register $t1.
 
-li $a0, 0
+li $a0, 0	
 li $a1, 4
 li $v0, 42
 syscall        	 	# This syscall generates a random number between 0 and 3
-addi $t2, $a0, 1	# Now the function adds 1 (so the range is between 2-14) and it passes the value to the temporal register $t1.
+addi $t2, $v0, 1	# Now the function adds 1 (so the range is between 2-14) and it passes the value to the temporal register $t1.
 
 sll $t2, $t2, 16
 add $a0, $t2, $t1	# Now in $a0 there is a card stored. The first halfword represents the suit and the second the number of the card.
