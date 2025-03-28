@@ -6,14 +6,13 @@
 
 ## TEXT MESSAGES
 
-shownCards: .space 36  ## Array that stores the cards that already have been shonw
+shownCards: .space 88  ## Array that stores the cards
 .align 2
 
 player1_name: .space  48
-player2_name: .space 48
 
-menu_mensaje : .asciiz "\n\n**BIENVENIDO A ASM-POKER** \n Trabajo hecho por alejandromolto. \n \n OPCIONES: \n \n (1) Jugar al poker. \n (2) Opciones. \n (3) Salida. \n \nElige tu opción: "
-menu_message : .asciiz "\n\n**WELLCOME TO ASM-POKER** \n Work done by alejandromolto. \n \n OPTIONS: \n \n (1) Play poker. \n (2) Settings. \n (3) Exit. \n \n Choose your option: "
+menu_mensaje : .asciiz "\n\n**BIENVENIDO A ASM-BLACKJACK** \n Trabajo hecho por alejandromolto. \n \n OPCIONES: \n \n (1) Jugar al blackjack. \n (2) Opciones. \n (3) Salida. \n \nElige tu opción: "
+menu_message : .asciiz "\n\n**WELLCOME TO ASM-BLACKJACK** \n Work done by alejandromolto. \n \n OPTIONS: \n \n (1) Play blackjack. \n (2) Settings. \n (3) Exit. \n \n Choose your option: "
 opciones_mensaje: .asciiz "\n\n**SETTINGS MENU**\n\n(1) Change language\n(2) Exit\n \nElige tu opción:"
 settings_message: .asciiz "\n\n**MENÚ DE CONFIGURACIÓN**\n\n(1) Cambiar idioma\n(2) Salir\n\nChoose your option: "
 lenguaje_mensaje: .asciiz "\n\n**MENÚ DE IDIOMA**\n\n(1) Inglés\n(2) Español \n(3) Salir\n\nElige tu opción:"
@@ -24,6 +23,15 @@ game_starting: .asciiz "\nThe match is going to start. The dealer is handling th
 empezando_juego: .asciiz "\nLa partida va a comenzar. El croupier está barajando las cartas..."
 dialogue: .asciiz ">"
 yougot: .asciiz "\nYou have got the "
+tienesel: .asciiz "\nTienes el: "
+dealerhas: .asciiz "\nThe dealer shows a "
+eldealertiene: .asciiz "\nEl croupier muestra un "
+theothercard: .asciiz "\nThe other card is upside down."
+laotracarta: .asciiz "\nLa otra carta se encuentra boca abajo."
+sumadecartas:
+cardsum:
+pressEnter: .asciiz "\nPress enter to continue.\n"
+presionaEnter: .asciiz "\nPresiona enter para continuar.\n"
 ofclubs: .asciiz " of clubs"
 ofhearts: .asciiz " of hearts"
 ofdiamonds: .asciiz " of diamonds"
@@ -86,6 +94,10 @@ mainmenu:
 	j ask_option	
 
 
+
+
+
+
 language_menu:
 
 	## If language = 1, then the message displays in english. Any other value for $s0 displays the message in espanish (esp2).
@@ -131,6 +143,8 @@ language_menu:
 
 game:
 
+	jal ContinueOption
+	
 	## If language = 1, then the message displays in english. Any other value for s0 displays the message in espanish (esp1).
 	addi $t0, $s0, -1
 	bnez $t0, esp3
@@ -148,17 +162,51 @@ game:
 	start_game:
 	
 	jal GenerateCards
-	jal StoreCardsInRegisters
+	la $t5, shownCards 
+
+	# Cards in registers
+
+	lw $s1, 0($t5)
+	lw $s2, 4($t5)
+	lw $s4, 44($t5)
+	lw $s5, 48($t5)
 	
-	## Poker cards must be confidential so, firstly it shows the player one	its cards and then it does the same with player two.
-	## Player one cards (stored in $s1, $s2)
+	# Player one cards (stored in $s1, $s2)
 	
+	la $a0, yougot		# "You got" message
+	li $v0, 4
+	syscall
+
 	move $a0, $s1	
 	jal TranslateCard
+	
+	la $a0, yougot		# "You got" message
+	li $v0, 4
+	syscall
+	
 	move $a0, $s2
 	jal TranslateCard	
+	
+		# Sum of the cards
+		
+	li $a0, 10
+	li $v0, 11
+	syscall
+	
+	## Dealer card (stored in $s3)
+	
+	la $a0, dealerhas		# "Dealer has" message
+	li $v0, 4
+	syscall
 
 
+	move $a0, $s4
+	jal TranslateCard
+
+	la $a0, theothercard		# "The other card" message
+	li $v0, 4
+	syscall
+	
 exit:
 	li $v0, 10
 	syscall
@@ -170,13 +218,48 @@ exit:
 ## SUBRUTINES
 
 
+CalculateSum:	# This function gets the parameter $a0 which indicates the number of cards that the player has.
+
+
+
+ContinueOption:
+
+
+## If language = 1, then the message displays in english. Any other value for s0 displays the message in espanish (esp4).
+addi $t0, $s0, -1
+bnez $t0, esp4
+
+la $a0, pressEnter
+li $v0, 4
+syscall
+j continuewiththecontinue
+
+
+esp4:
+la $a0, presionaEnter
+li $v0, 4
+syscall
+
+continuewiththecontinue:
+
+li $a0, '>'
+li $v0, 11
+syscall
+
+	notenter:
+		li $v0, 12
+		syscall
+		
+		beq $v0, 10, enterpressed
+		j notenter
+
+	enterpressed:
+		jr $ra
+
 TranslateCard: # This function receives a card into $a0 and prints out the card
 
 move $a1, $a0
 
-la $a0, yougot		# "You got" message
-li $v0, 4
-syscall
 
 
 # Card print
@@ -184,7 +267,7 @@ syscall
 li $t2, 11
 li $t3, 12
 li $t4, 13
-li $t5, 14
+li $t5, 1
 
 andi $t1, $a1, 0x0000FFFF
 
@@ -261,29 +344,11 @@ syscall
 jr $ra
 
 
-
-StoreCardsInRegisters: # This function stores card in registers. 
-
-la $t5, shownCards 
-
-lw $s1, 0($t5)
-lw $s2, 4($t5)
-lw $s3, 8($t5)
-lw $s4, 12($t5)
-lw $s5, 16($t5)
-lw $s6, 20($t5)
-lw $s7, 24($t5)
-lw $t8, 28($t5)
-lw $t9, 32($t5)
-
-jr $ra
-
-
-GenerateCards: # This function generates all the cards and stores them in the array
+GenerateCards: ## This function generates all the cards (22) and stores them in the array
 
 la $t5, shownCards 
 li $t6, 0		# Counter
-li $t7, 9		# Limit (maximum of iterations)
+li $t7, 21	# Limit (maximum of iterations)
 
 loop1:
 	j GenerateCard
@@ -300,14 +365,14 @@ back_to_main:
 
 
 
-GenerateCard: # This function returns a card to $v0
+GenerateCard: ## This function returns a card to $v0
 
 li $v0, 30
 syscall
 li $a1, 13
 li $v0, 42	
 syscall        	 	# This syscall generates a random number between 0 and 12 inclusive
-addi $t1, $a0, 2	# Now the function adds 2 (so the range is between 2-14) and it passes the value to the temporal register $t1.
+addi $t1, $a0, 1	# Now the function adds 1 (so the range is between 1-13) and it passes the value to the temporal register $t1.
 
 li $a0, 0	
 li $a1, 4
@@ -326,7 +391,7 @@ j IsTheCardShown
 	j SingleCardGenerated
 
 
-IsTheCardShown: # This function receives a card in the paramater $a0 and returns to $v1 a 1 if it is has already been shown and a 0 if it hasnt been shown.
+IsTheCardShown: ## This function receives a card in the paramater $a0 and returns to $v1 a 1 if it is has already been shown and a 0 if it hasnt been shown.
 
 li $v1, 0		# The default value is not shown
 li $t4, 8		# Number of times the loop has to be repeated (it only has to check for 8 elements as there is no need to check after the nineth card is added)
@@ -348,7 +413,7 @@ la $t1, shownCards	# Adress of the array
 		j PostCheckGenerateCard
 
 
-SetCardsShownToZero: # This function sets all the values of the array to 0.
+SetCardsShownToZero: ## This function sets all the values of the array to 0.
 
 li $v1, 0		# The default value is not shown
 li $t4, 9		# Number of times the loop has to be repeated
@@ -365,6 +430,6 @@ la $t1, shownCards	# Adress of the array
 	back_to_main2:
 		jr $ra
 
-# TO DO:
-# 1. Design a "Press enter to continue" function so it can be implemented every time a wait is involved.
-# 2. Add the cards for the second player (with the wait implemented and having somehow having erased the cards of the previous player in the screen)
+
+# To do:
+# 1. Design the CalculateSum function.
