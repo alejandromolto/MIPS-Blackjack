@@ -6,6 +6,12 @@
 
 ## TEXT MESSAGES
 
+shownCards: .space 36  ## Array that stores the cards that already have been shonw
+.align 2
+
+player1_name: .space  48
+player2_name: .space 48
+
 menu_mensaje : .asciiz "\n\n**BIENVENIDO A ASM-POKER** \n Trabajo hecho por alejandromolto. \n \n OPCIONES: \n \n (1) Jugar al poker. \n (2) Opciones. \n (3) Salida. \n \nElige tu opción: "
 menu_message : .asciiz "\n\n**WELLCOME TO ASM-POKER** \n Work done by alejandromolto. \n \n OPTIONS: \n \n (1) Play poker. \n (2) Settings. \n (3) Exit. \n \n Choose your option: "
 opciones_mensaje: .asciiz "\n\n**SETTINGS MENU**\n\n(1) Change language\n(2) Exit\n \nElige tu opción:"
@@ -31,8 +37,7 @@ deespadas: .asciiz " de espadas"
 
 
 ## VALUES
-.align 2
-shownCards: .space 36  ## Array that stores the cards that already have been shonw
+
 
 
 ## MAIN
@@ -75,7 +80,7 @@ mainmenu:
 	beq $v0, $t2, language_menu
 	beq $v0, $t3, exit 
 
-	la $a0 invalid_option
+	la $a0, invalid_option
 	li $v0, 4
 	syscall
 	j ask_option	
@@ -150,7 +155,7 @@ game:
 	
 	move $a0, $s1	
 	jal TranslateCard
-	move $a0, $s1
+	move $a0, $s2
 	jal TranslateCard	
 
 
@@ -169,15 +174,56 @@ TranslateCard: # This function receives a card into $a0 and prints out the card
 
 move $a1, $a0
 
-la $a0, yougot
+la $a0, yougot		# "You got" message
 li $v0, 4
 syscall
 
+
+# Card print
+
+li $t2, 11
+li $t3, 12
+li $t4, 13
+li $t5, 14
+
 andi $t1, $a1, 0x0000FFFF
+
+beq $t1, $t2, J
+beq $t1, $t3, Q
+beq $t1, $t4, K
+beq $t1, $t5, A
+
 move $a0, $t1
 li $v0, 1
 syscall
+j printsuit
 
+J:
+li $a0, 'J'
+li $v0, 11
+syscall
+j printsuit
+
+Q:
+li $a0, 'Q'
+li $v0, 11
+syscall
+j printsuit
+
+K:
+li $a0, 'K'
+li $v0, 11
+syscall
+j printsuit
+
+A:
+li $a0, 'A'
+li $v0, 11
+syscall
+j printsuit
+
+## Suit print
+printsuit:
 li $t2, 1
 li $t3, 2
 li $t4, 3
@@ -186,9 +232,9 @@ li $t5, 4
 srl $t1, $a1, 16
 
 beq $t1, $t2, clubs
-beq $t1, $t2, diamonds
-beq $t1, $t2, hearts
-beq $t1, $t2, spades
+beq $t1, $t3, diamonds
+beq $t1, $t4, hearts
+beq $t1, $t5, spades
 
 clubs:
 la $a0, ofclubs
@@ -216,7 +262,7 @@ jr $ra
 
 
 
-StoreCardsInRegisters: ## This function stores card in registers. 
+StoreCardsInRegisters: # This function stores card in registers. 
 
 la $t5, shownCards 
 
@@ -233,7 +279,7 @@ lw $t9, 32($t5)
 jr $ra
 
 
-GenerateCards: ## This function generates all the cards and stores them in the array
+GenerateCards: # This function generates all the cards and stores them in the array
 
 la $t5, shownCards 
 li $t6, 0		# Counter
@@ -254,22 +300,24 @@ back_to_main:
 
 
 
-GenerateCard: ## This function returns a card to $v0
+GenerateCard: # This function returns a card to $v0
 
-li $a0, 0
+li $v0, 30
+syscall
 li $a1, 13
-li $v0, 42
+li $v0, 42	
 syscall        	 	# This syscall generates a random number between 0 and 12 inclusive
-addi $t1, $v0, 2	# Now the function adds 1 (so the range is between 2-14) and it passes the value to the temporal register $t1.
+addi $t1, $a0, 2	# Now the function adds 2 (so the range is between 2-14) and it passes the value to the temporal register $t1.
 
 li $a0, 0	
 li $a1, 4
 li $v0, 42
 syscall        	 	# This syscall generates a random number between 0 and 3
-addi $t2, $v0, 1	# Now the function adds 1 (so the range is between 2-14) and it passes the value to the temporal register $t1.
+addi $t2, $a0, 1	# Now the function adds 1 (so the range is between 1-3) and it passes the value to the temporal register $t2.
 
 sll $t2, $t2, 16
 add $a0, $t2, $t1	# Now in $a0 there is a card stored. The first halfword represents the suit and the second the number of the card.
+move $v0, $a0
 j IsTheCardShown
 
 	PostCheckGenerateCard:
@@ -278,7 +326,7 @@ j IsTheCardShown
 	j SingleCardGenerated
 
 
-IsTheCardShown: ## This function receives a card in the paramater $a0 and returns to $v1 a 1 if it is has already been shown and a 0 if it hasnt been shown.
+IsTheCardShown: # This function receives a card in the paramater $a0 and returns to $v1 a 1 if it is has already been shown and a 0 if it hasnt been shown.
 
 li $v1, 0		# The default value is not shown
 li $t4, 8		# Number of times the loop has to be repeated (it only has to check for 8 elements as there is no need to check after the nineth card is added)
@@ -300,7 +348,7 @@ la $t1, shownCards	# Adress of the array
 		j PostCheckGenerateCard
 
 
-SetCardsShownToZero: ## This function sets all the values of the array to 0.
+SetCardsShownToZero: # This function sets all the values of the array to 0.
 
 li $v1, 0		# The default value is not shown
 li $t4, 9		# Number of times the loop has to be repeated
@@ -317,4 +365,6 @@ la $t1, shownCards	# Adress of the array
 	back_to_main2:
 		jr $ra
 
-
+# TO DO:
+# 1. Design a "Press enter to continue" function so it can be implemented every time a wait is involved.
+# 2. Add the cards for the second player (with the wait implemented and having somehow having erased the cards of the previous player in the screen)
