@@ -276,7 +276,7 @@ li $t9, 0	# Alternative total value
 		sltiu $t6, $t4, 10	# 10, J, Q, K
 		beqz $t6, upten
 		
-		beq $t1, 1, acecase	# A
+		beq $t4, 1, acecase	# A
 		
 		add $t7, $t7, $t4
 		add $t9, $t9, $t4
@@ -291,8 +291,11 @@ li $t9, 0	# Alternative total value
 		bnez $t6, sumone
 		
 		move $t9, $t8
+		addi $t1, $t1, 4
+		addi $t0, $t0, 1
 		addi $t7, $t7, 1
-		
+		j CalculateSumLoop
+				
 		sumone:
 		addi $t9, $t9, 1
 		addi $t7, $t7, 1
@@ -311,12 +314,21 @@ li $t9, 0	# Alternative total value
 	exitfunction:
 	move $v0, $t7
 	
-	sgt $t6, $t9, 21
-	bnez $t6, exitfunctionnov1
+	beq $t9, $t7, exitfunctionnov1	# if v0 = v1, then v1 serves no purpose
+	sgt $t6, $t9, 21		
+	bnez $t6, exitfunctionnov1	# if v1 is greater than 21 it should not exist
+	beq $t9, 21, exitfunctionnov1b	# if v1 is blackjack it moves to v0
 	
 	move $v1, $t9
+	jr $ra
 	
-	exitfunctionnov1:
+	exitfunctionnov1b:	# $v1 is blackjack thus it replaces $v0
+	move $v0, $t9
+	li $v1, 0
+	jr $ra
+	
+	exitfunctionnov1:	# $v1 is deleted (serves no purpose)
+	li $v1, 0
 	jr $ra
 
 
@@ -530,4 +542,4 @@ la $t1, Cards	# Adress of the array
 
 
 # To do:
-# 1. Design the CalculateSum function.
+# 1. Keep working on game function
