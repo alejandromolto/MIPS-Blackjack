@@ -6,7 +6,7 @@
 
 ## TEXT MESSAGES
 
-shownCards: .space 88  ## Array that stores the cards
+Cards: .space 88  ## Array that stores the cards
 .align 2
 
 player1_name: .space  48
@@ -28,8 +28,6 @@ dealerhas: .asciiz "\nThe dealer shows a "
 eldealertiene: .asciiz "\nEl croupier muestra un "
 theothercard: .asciiz "\nThe other card is upside down."
 laotracarta: .asciiz "\nLa otra carta se encuentra boca abajo."
-sumadecartas:
-cardsum:
 pressEnter: .asciiz "\nPress enter to continue.\n"
 presionaEnter: .asciiz "\nPresiona enter para continuar.\n"
 ofclubs: .asciiz " of clubs"
@@ -40,7 +38,8 @@ depicas: .asciiz " de picas"
 decorazones: .asciiz " de corazones"
 dediamantes: .asciiz " de diamantes"
 deespadas: .asciiz " de espadas"
-
+sumcards: .asciiz "\nThe sum of your cards is currently "
+gameoptions: .asciiz "\n\nOPTIONS: \n \n (1) Hit. \n (2) Stay. \n (3) Double. \n \n Choose your option: "
 
 
 
@@ -143,6 +142,11 @@ language_menu:
 
 game:
 
+# VARIABLES PRESERVED ACROSS PROCEDURE CALLS
+li $s6, 0	# Number of cards of the user
+li $s7, 0	# Number of cards of the croupier
+
+
 	jal ContinueOption
 	
 	## If language = 1, then the message displays in english. Any other value for s0 displays the message in espanish (esp1).
@@ -162,14 +166,19 @@ game:
 	start_game:
 	
 	jal GenerateCards
-	la $t5, shownCards 
+	la $t5, Cards 
 
 	# Cards in registers
 
 	lw $s1, 0($t5)
 	lw $s2, 4($t5)
+	
+	li $s6, 2
+	
 	lw $s4, 44($t5)
 	lw $s5, 48($t5)
+	
+	li $s7, 2
 	
 	# Player one cards (stored in $s1, $s2)
 	
@@ -193,6 +202,32 @@ game:
 	li $v0, 11
 	syscall
 	
+	la $a0, sumcards
+	li $v0, 4
+	syscall
+	
+	la $a0, Cards
+	move $a1, $s6
+	jal CalculateSum
+	move $a0, $v0
+	li $v0, 1
+	syscall
+		
+	beqz $v1, dealercards
+	
+	li $a0, '/'
+	li $v0, 11
+	syscall
+	
+	move $a0, $v1
+	li $v0, 1
+	syscall
+
+	li $a0, 10
+	li $v0, 11
+	syscall
+	
+	dealercards:
 	## Dealer card (stored in $s3)
 	
 	la $a0, dealerhas		# "Dealer has" message
@@ -218,8 +253,71 @@ exit:
 ## SUBRUTINES
 
 
-CalculateSum:	# This function gets the parameter $a0 which indicates the number of cards that the player has.
+CalculateSum:	
+# This function gets the parameters; $a1 which indicates the length of the cards of the array that the player/dealer actually has.
+# $a0, which indicates the adress of the vector(it can be the adress of the player or the adress of the dealer)
+# The function returns to v0 (and v1 if there are two possible values) the total value of the cards. If there is only one possible value $v1 will be set to zero.
 
+li $t0, 0	# counter
+move $t1, $a0 	# adress of the array (iterative, can and will vary)
+move $t2, $a1 	# number of iterations
+li $t3, 0	# number of aces
+li $t4, 0	# current card
+li $t6, 0	# temporal value for branch
+li $t8, 0	# temporal value for comparing
+li $t7, 0	# TOTAL VALUE!
+li $t9, 0	# Alternative total value
+
+	CalculateSumLoop:
+		beq $t0, $t2, exitfunction
+		lw $t4, 0($t1)
+		andi $t4, 0x00FF
+		
+		sltiu $t6, $t4, 10	# 10, J, Q, K
+		beqz $t6, upten
+		
+		beq $t1, 1, acecase	# A
+		
+		add $t7, $t7, $t4
+		add $t9, $t9, $t4
+		addi $t1, $t1, 4
+		addi $t0, $t0, 1		
+		j CalculateSumLoop
+				
+		acecase:
+		
+		addi $t8, $t7, 11
+		sgt $t6, $t8, 21
+		bnez $t6, sumone
+		
+		move $t9, $t8
+		addi $t7, $t7, 1
+		
+		sumone:
+		addi $t9, $t9, 1
+		addi $t7, $t7, 1
+		addi $t1, $t1, 4
+		addi $t0, $t0, 1
+		j CalculateSumLoop
+		
+		upten:
+		addi $t9, $t9, 10
+		addi $t7, $t7, 10
+		addi $t1, $t1, 4
+		addi $t0, $t0, 1
+		j CalculateSumLoop
+
+
+	exitfunction:
+	move $v0, $t7
+	
+	sgt $t6, $t9, 21
+	bnez $t6, exitfunctionnov1
+	
+	move $v1, $t9
+	
+	exitfunctionnov1:
+	jr $ra
 
 
 ContinueOption:
@@ -346,7 +444,7 @@ jr $ra
 
 GenerateCards: ## This function generates all the cards (22) and stores them in the array
 
-la $t5, shownCards 
+la $t5, Cards 
 li $t6, 0		# Counter
 li $t7, 21	# Limit (maximum of iterations)
 
@@ -396,7 +494,7 @@ IsTheCardShown: ## This function receives a card in the paramater $a0 and return
 li $v1, 0		# The default value is not shown
 li $t4, 8		# Number of times the loop has to be repeated (it only has to check for 8 elements as there is no need to check after the nineth card is added)
 li $t0, 0 		# Counter
-la $t1, shownCards	# Adress of the array
+la $t1, Cards	# Adress of the array
 
 	loop2:
 	lw $t2, 0($t1)				# Gets the value of the cards individually.
@@ -418,7 +516,7 @@ SetCardsShownToZero: ## This function sets all the values of the array to 0.
 li $v1, 0		# The default value is not shown
 li $t4, 9		# Number of times the loop has to be repeated
 li $t0, 0 		# Counter
-la $t1, shownCards	# Adress of the array
+la $t1, Cards	# Adress of the array
 
 	loop3:
 	sw $zero, 0($t1)		# Erases the value of the cards individually.
