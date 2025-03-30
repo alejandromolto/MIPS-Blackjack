@@ -42,6 +42,10 @@ sumcards: .asciiz "\nThe sum of your cards is currently "
 gameoptions: .asciiz "\n\nOPTIONS: \n \n (1) Hit. \n (2) Stay. \n (3) Double. \n \n Choose your option: "
 opcionesjuego: .asciiz "\n\nOPTIONS: \n \n (1) Pedir. \n (2) Plantarse. \n (3) Doblar. \n \n Elige tu opción: "
 youlost: .asciiz "\n**YOU LOST**\nBetter luck next time!\n"
+sumcardsdealer: .asciiz "\nThe sum of the dealer's cards is currently "
+dealerbusted: .asciiz "\nThe dealer has busted!\nYou won!\n"
+drawmessage: .asciiz "\nThere has been a draw!"
+userwinsmessage: .asciiz "\n**YOU WON**\n"
 
 ## VALUES
 
@@ -271,7 +275,7 @@ gameloop:
 		addi $s3, $s3, 4	# number of iteration multiplied by 4
 	
 		la $a0, yougot		# "You got" message
-			li $v0, 4
+		li $v0, 4
 		syscall
 	
 		move $a0, $t1
@@ -289,7 +293,9 @@ gameloop:
 	
 		la $a0, Cards
 		move $a1, $t3
+		move $s3, $t3
 		jal CalculateSum
+		
 		
 		move $t1, $v0
 		
@@ -313,24 +319,158 @@ gameloop:
 		li $v0, 11
 		syscall
 	
-
-	
 	
 	j gameloop
 	
 	
 	stay:
-	j dealerflip
+		# Second card print
+		
+		la $a0, dealerhas		# "Dealer has" message
+		li $v0, 4
+		syscall
+		
+		la $a0, Cards
+		addi $a0, $a0, 48
+		lw $a0, 0($a0)
+		jal TranslateCard
+		
+		la $a0, sumcardsdealer		# Dealer sum message
+		li $v0, 4
+		syscall
+		
+		la $a0, Cards
+		addi $a0, $a0, 44
+		li $a1, 2
+		jal CalculateSum
+		
+		move $a0, $v0
+		li $v0, 1
+		syscall
+		
+		beqz $v1, dealerloop
+	
+		li $a0, '/'
+		li $v0, 11
+		syscall
+	
+		move $a0, $v1
+		li $v0, 1
+		syscall
 
-	dealerflip:
+		li $a0, 10
+		li $v0, 11
+		syscall
+							
+		dealerloop:
+			
+			la $a0, Cards
+			addi $a0, $a0 ,44	# Function parameter: adress of the dealer cards
+			move $a1, $s7		# Function parameter: dealer cards
+			jal CalculateSum	# Calculate sum
+		
+			bnez $v1, hasAce 
+			
+			blt $v0, 17, DealerHit
+			bgt $v0, 21, DealerBust
+		
+			j DealerStand
+		
+			hasAce:
+				blt $v1, 17, DealerHit
+				bgt $v1, 21, DealerBust
+				j DealerStand
+		
+			DealerHit:
+				addi $s7, $s7, 1
+			
+				la $a0, dealerhas		# "Dealer has" message
+				li $v0, 4
+				syscall
+			
+				la $a0, Cards
+				addi $a0, $a0, 44
+				addi $t1, $s7, -1
+				sll $t1, $t1, 2
+				add $a0, $t1, $a0
+				lw $a0, 0($a0)
+				jal TranslateCard
+				
+				la $a0, sumcardsdealer		# Dealer sum message
+				li $v0, 4
+				syscall
+		
+				la $a0, Cards
+				addi $a0, $a0, 44
+				move $a1, $s7
+				jal CalculateSum
+		
+				move $a0, $v0
+				li $v0, 1
+				syscall
+					
+				j dealerloop
+	
+			DealerBust:
+				la $a0, dealerbusted
+				li $v0, 4
+				syscall
+				j exit
+				
+			DealerStand:
+				j CompareDealerAndUser
+	
+	
 	j exit
 	
 	youlostmessagedisplay:
 	la $a0, youlost
 	li $v0, 4
 	syscall
+	j exit
 	
+	CompareDealerAndUser:	# Dealer number of cards is in $s7 and user's number of cards is in $s3
+	la $a0, Cards	
+	move $a1, $s3		
+	jal CalculateSum	
+	move $s3, $v0		# Now, the sum of the cards of the user will be stored in $s3
+	beqz $v1, usernoace
+	move $s3, $v1
 	
+	usernoace:
+
+	la $a0, Cards
+	addi $a0, $a0 ,44	
+	move $a1, $s7		
+	jal CalculateSum	
+	move $s7, $v0		# Now, the sum of the cards of the dealer will be stored in $s7
+	beqz $v1, dealernoace 
+	move $s7, $v1
+	
+	dealernoace:
+
+	
+	bgt $s3, $s7, userwins	
+	beq $s3, $s7, draw
+	blt $s3, $s7, housewins	
+	
+	userwins:
+	la $a0, userwinsmessage
+	li $v0, 4
+	syscall
+	j exit
+	
+	draw:
+	la $a0, drawmessage
+	li $v0, 4
+	syscall
+	j exit
+		
+	housewins:
+	la $a0, youlost
+	li $v0, 4
+	syscall
+	j exit
 exit:
 	li $v0, 10
 	syscall
@@ -655,7 +795,6 @@ la $t1, Cards	# Adress of the array
 
 
 # To do:
-# 1. Do the stay option.
-# 2. Configurate the money (floating point registers needed).
-# 3. Do a "Play other hand" option.
-# 4. Automate translations with a function that receives in parameters the adress to the message in english and spanish.
+# 1. Configurate the money (floating point registers needed).
+# 2. Do a "Play other hand" option.
+# 3. Automate translations with a function that receives in parameters the adress to the message in english and spanish.
