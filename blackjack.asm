@@ -24,7 +24,7 @@ empezando_juego: .asciiz "\nLa partida va a comenzar. El croupier está barajand
 dialogue: .asciiz ">"
 yougot: .asciiz "\nYou have got the "
 tienesel: .asciiz "\nTienes el: "
-dealerhas: .asciiz "\nThe dealer shows a "
+dealerhas: .asciiz "\n\nThe dealer shows a "
 eldealertiene: .asciiz "\nEl croupier muestra un "
 theothercard: .asciiz "\nThe other card is upside down."
 laotracarta: .asciiz "\nLa otra carta se encuentra boca abajo."
@@ -40,8 +40,8 @@ dediamantes: .asciiz " de diamantes"
 deespadas: .asciiz " de espadas"
 sumcards: .asciiz "\nThe sum of your cards is currently "
 gameoptions: .asciiz "\n\nOPTIONS: \n \n (1) Hit. \n (2) Stay. \n (3) Double. \n \n Choose your option: "
-
-
+opcionesjuego: .asciiz "\n\nOPTIONS: \n \n (1) Pedir. \n (2) Plantarse. \n (3) Doblar. \n \n Elige tu opción: "
+youlost: .asciiz "\n**YOU LOST**\nBetter luck next time!\n"
 
 ## VALUES
 
@@ -147,7 +147,6 @@ li $s6, 0	# Number of cards of the user
 li $s7, 0	# Number of cards of the croupier
 
 
-	jal ContinueOption
 	
 	## If language = 1, then the message displays in english. Any other value for s0 displays the message in espanish (esp1).
 	addi $t0, $s0, -1
@@ -162,23 +161,29 @@ li $s7, 0	# Number of cards of the croupier
 		la $a0, empezando_juego
 		li $v0, 4
 		syscall
-
+	
+	
+	
 	start_game:
+	
+	jal ContinueOption
 	
 	jal GenerateCards
 	la $t5, Cards 
 
-	# Cards in registers
-
-	lw $s1, 0($t5)
-	lw $s2, 4($t5)
+	# REGISTERS! (CHECK HERE REGISTER CONVENTION)
 	
-	li $s6, 2
+	# (Remember $s0 is the lenguage register)
 	
-	lw $s4, 44($t5)
-	lw $s5, 48($t5)
+	lw $s1, 0($t5)	# card of the player (it can be any card) ($s1)
+	lw $s2, 4($t5)	# card of the player (it can be any card) ($s2)
 	
-	li $s7, 2
+	li $s6, 2	# number of cards of the player ($s6)
+	
+	lw $s4, 44($t5)	# card of the dealer (it can be any card) ($s4)
+	lw $s5, 48($t5)	# card of the dealer (it can be any card) ($s5)
+	
+	li $s7, 2	# number of cards of the dealer ($s7)
 	
 	# Player one cards (stored in $s1, $s2)
 	
@@ -196,11 +201,7 @@ li $s7, 0	# Number of cards of the croupier
 	move $a0, $s2
 	jal TranslateCard	
 	
-		# Sum of the cards
-		
-	li $a0, 10
-	li $v0, 11
-	syscall
+	# Sum of the cards
 	
 	la $a0, sumcards
 	li $v0, 4
@@ -226,9 +227,16 @@ li $s7, 0	# Number of cards of the croupier
 	li $a0, 10
 	li $v0, 11
 	syscall
-	
+
+		
 	dealercards:
-	## Dealer card (stored in $s3)
+	
+	jal ContinueOption
+	## Dealer card (stored in $s4)
+		
+	li $a0, 10
+	li $v0, 11
+	syscall
 	
 	la $a0, dealerhas		# "Dealer has" message
 	li $v0, 4
@@ -241,6 +249,87 @@ li $s7, 0	# Number of cards of the croupier
 	la $a0, theothercard		# "The other card" message
 	li $v0, 4
 	syscall
+
+li $s3, 0	# iteration variable
+	
+gameloop:
+	
+	# Options
+	jal GameOptionsMenu
+	beq $v0, 1, hit
+	beq $v0, 2, stay
+	beq $v0, 3, double
+
+	
+	double:
+		# money double statement
+	hit:
+		la $t2, Cards
+		addi $t2, $t2, 8
+		add $t2, $t2 ,$s3
+		lw $t1, 0($t2)
+		addi $s3, $s3, 4	# number of iteration multiplied by 4
+	
+		la $a0, yougot		# "You got" message
+			li $v0, 4
+		syscall
+	
+		move $a0, $t1
+		jal TranslateCard
+		li $t3, 2
+		div $t4, $s3, 4
+		add $t3, $t3, $t4
+
+
+	# Sum of the cards
+	
+		la $a0, sumcards
+		li $v0, 4
+		syscall
+	
+		la $a0, Cards
+		move $a1, $t3
+		jal CalculateSum
+		
+		move $t1, $v0
+		
+		move $a0, $v0
+		li $v0, 1
+		syscall
+		
+		bgt $t1, 21, youlostmessagedisplay
+				
+		beqz $v1, gameloop
+	
+		li $a0, '/'
+		li $v0, 11
+		syscall
+	
+		move $a0, $v1
+		li $v0, 1
+		syscall
+
+		li $a0, 10
+		li $v0, 11
+		syscall
+	
+
+	
+	
+	j gameloop
+	
+	
+	stay:
+	j dealerflip
+
+	dealerflip:
+	j exit
+	
+	youlostmessagedisplay:
+	la $a0, youlost
+	li $v0, 4
+	syscall
+	
 	
 exit:
 	li $v0, 10
@@ -251,6 +340,30 @@ exit:
 
 
 ## SUBRUTINES
+
+GameOptionsMenu: # This function returns a option (hit(1), stay(2), double(3)) to $v0
+la $a0, gameoptions
+li $v0, 4
+syscall
+
+	askforvalidgameoption:
+		li $v0, 5
+		syscall
+		
+		beq $v0, 1, returnoption
+		beq $v0, 2, returnoption	
+		beq $v0, 3, returnoption	
+		
+		la $a0, invalid_option
+		li $v0, 4
+		syscall
+		j askforvalidgameoption
+		
+returnoption:
+jr $ra
+
+
+
 
 
 CalculateSum:	
@@ -526,7 +639,7 @@ la $t1, Cards	# Adress of the array
 SetCardsShownToZero: ## This function sets all the values of the array to 0.
 
 li $v1, 0		# The default value is not shown
-li $t4, 9		# Number of times the loop has to be repeated
+li $t4, 21		# Number of times the loop has to be repeated (22 cards)
 li $t0, 0 		# Counter
 la $t1, Cards	# Adress of the array
 
@@ -542,4 +655,7 @@ la $t1, Cards	# Adress of the array
 
 
 # To do:
-# 1. Keep working on game function
+# 1. Do the stay option.
+# 2. Configurate the money (floating point registers needed).
+# 3. Do a "Play other hand" option.
+# 4. Automate translations with a function that receives in parameters the adress to the message in english and spanish.
