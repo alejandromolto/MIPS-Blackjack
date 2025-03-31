@@ -46,7 +46,10 @@ sumcardsdealer: .asciiz "\nThe sum of the dealer's cards is currently "
 dealerbusted: .asciiz "\nThe dealer has busted!\nYou won!\n"
 drawmessage: .asciiz "\nThere has been a draw!"
 userwinsmessage: .asciiz "\n**YOU WON**\n"
-
+askforbetmessage: .asciiz "\n\HOW MUCH DO YOU WANT TO BET?\nWrite the amount: "
+wrongbet: .asciiz "\nYou cannot bet more than the amount of money that you have\n"
+balancemessage: .asciiz "\nYour current balance is: \n"
+anotherhand: .asciiz "\n\**DO YOU WANT TO PLAY ANOTHER HAND?** \n \n (1) Yes. \n (2) No (Exit). \nChoose your option: "
 ## VALUES
 
 
@@ -146,11 +149,42 @@ language_menu:
 
 game:
 
+# MONEY; $f20 will be the general money of the player, while $f21 will be the money that its being played in that moment.
+
+askforbet:
+
+li $t0, 10
+mtc1 $t0, $f20		# The players money starts being 10
+cvt.s.w $f20, $f20  	# The money being played will be by default 0
+	
+la $a0, askforbetmessage
+li $v0, 4
+syscall
+
+li $v0, 6
+syscall
+
+mov.s $f21, $f0
+
+c.lt.s $f21, $f20
+bc1t betright
+
+mtc1 $zero, $f16
+c.lt.s $f16, $f21
+bc1t betright
+
+la $a0, wrongbet
+li $v0, 4
+syscall
+
+
+betright:
+
+sub.s $f20, $f20, $f21
+
 # VARIABLES PRESERVED ACROSS PROCEDURE CALLS
 li $s6, 0	# Number of cards of the user
 li $s7, 0	# Number of cards of the croupier
-
-
 	
 	## If language = 1, then the message displays in english. Any other value for s0 displays the message in espanish (esp1).
 	addi $t0, $s0, -1
@@ -266,7 +300,8 @@ gameloop:
 
 	
 	double:
-		# money double statement
+		sub.s $f20, $f20, $f21	
+		add.s $f21, $f21, $f21	# Multiply the value in play by two.
 	hit:
 		la $t2, Cards
 		addi $t2, $t2, 8
@@ -303,7 +338,7 @@ gameloop:
 		li $v0, 1
 		syscall
 		
-		bgt $t1, 21, youlostmessagedisplay
+		bgt $t1, 21, housewins
 				
 		beqz $v1, gameloop
 	
@@ -361,14 +396,18 @@ gameloop:
 		li $a0, 10
 		li $v0, 11
 		syscall
-							
+		
+
+								
 		dealerloop:
+			
+		jal ContinueOption
 			
 			la $a0, Cards
 			addi $a0, $a0 ,44	# Function parameter: adress of the dealer cards
 			move $a1, $s7		# Function parameter: dealer cards
 			jal CalculateSum	# Calculate sum
-		
+			
 			bnez $v1, hasAce 
 			
 			blt $v0, 17, DealerHit
@@ -408,26 +447,17 @@ gameloop:
 				move $a0, $v0
 				li $v0, 1
 				syscall
-					
+				
 				j dealerloop
 	
 			DealerBust:
-				la $a0, dealerbusted
-				li $v0, 4
-				syscall
-				j exit
+				j userwins
 				
 			DealerStand:
 				j CompareDealerAndUser
 	
 	
-	j exit
-	
-	youlostmessagedisplay:
-	la $a0, youlost
-	li $v0, 4
-	syscall
-	j exit
+	j endhand
 	
 	CompareDealerAndUser:	# Dealer number of cards is in $s7 and user's number of cards is in $s3
 	la $a0, Cards	
@@ -458,24 +488,35 @@ gameloop:
 	la $a0, userwinsmessage
 	li $v0, 4
 	syscall
-	j exit
+	add.s $f21, $f21, $f21
+	add.s $f20, $f20, $f21
+	j endhand
 	
 	draw:
 	la $a0, drawmessage
 	li $v0, 4
 	syscall
-	j exit
+	add.s $f20, $f20, $f21
+	j endhand
 		
 	housewins:
 	la $a0, youlost
 	li $v0, 4
 	syscall
-	j exit
+	j endhand
+
+endhand:
+	la $a0, balancemessage
+	li $v0, 4
+	syscall
+	
+	mov.s $f12, $f20
+	li $v0, 2
+	syscall
+
 exit:
 	li $v0, 10
 	syscall
-
-
 
 
 
@@ -795,6 +836,6 @@ la $t1, Cards	# Adress of the array
 
 
 # To do:
-# 1. Configurate the money (floating point registers needed).
+# 1. Keep working on the money.
 # 2. Do a "Play other hand" option.
 # 3. Automate translations with a function that receives in parameters the adress to the message in english and spanish.
