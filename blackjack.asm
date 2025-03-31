@@ -49,7 +49,7 @@ userwinsmessage: .asciiz "\n**YOU WON**\n"
 askforbetmessage: .asciiz "\n\HOW MUCH DO YOU WANT TO BET?\nWrite the amount: "
 wrongbet: .asciiz "\nYou cannot bet more than the amount of money that you have\n"
 balancemessage: .asciiz "\nYour current balance is: \n"
-anotherhand: .asciiz "\n\**DO YOU WANT TO PLAY ANOTHER HAND?** \n \n (1) Yes. \n (2) No (Exit). \nChoose your option: "
+anotherhandmessage: .asciiz "\n\**DO YOU WANT TO PLAY ANOTHER HAND?** \n \n (1) Yes. \n (2) No (Exit). \nChoose your option: "
 ## VALUES
 
 
@@ -151,10 +151,12 @@ game:
 
 # MONEY; $f20 will be the general money of the player, while $f21 will be the money that its being played in that moment.
 
-askforbet:
-
 li $t0, 10
 mtc1 $t0, $f20		# The players money starts being 10
+
+gamepostmoneyinitialization:
+askforbet:
+
 cvt.s.w $f20, $f20  	# The money being played will be by default 0
 	
 la $a0, askforbetmessage
@@ -289,7 +291,8 @@ li $s7, 0	# Number of cards of the croupier
 	syscall
 
 li $s3, 0	# iteration variable
-	
+li $a3, 2
+
 gameloop:
 	
 	# Options
@@ -353,7 +356,8 @@ gameloop:
 		li $a0, 10
 		li $v0, 11
 		syscall
-	
+		
+		addi $a3, $a3, 1
 	
 	j gameloop
 	
@@ -461,7 +465,7 @@ gameloop:
 	
 	CompareDealerAndUser:	# Dealer number of cards is in $s7 and user's number of cards is in $s3
 	la $a0, Cards	
-	move $a1, $s3		
+	move $a1, $a3	
 	jal CalculateSum	
 	move $s3, $v0		# Now, the sum of the cards of the user will be stored in $s3
 	beqz $v1, usernoace
@@ -488,6 +492,7 @@ gameloop:
 	la $a0, userwinsmessage
 	li $v0, 4
 	syscall
+	
 	add.s $f21, $f21, $f21
 	add.s $f20, $f20, $f21
 	j endhand
@@ -496,6 +501,7 @@ gameloop:
 	la $a0, drawmessage
 	li $v0, 4
 	syscall
+	
 	add.s $f20, $f20, $f21
 	j endhand
 		
@@ -513,6 +519,19 @@ endhand:
 	mov.s $f12, $f20
 	li $v0, 2
 	syscall
+	
+	la $a0, anotherhandmessage
+	li $v0, 4
+	syscall
+	
+	li $v0, 5
+	syscall
+	
+	beq $v0, 1, anotherhand
+	beq $v0, 2, exit
+	
+anotherhand:
+j gamepostmoneyinitialization
 
 exit:
 	li $v0, 10
@@ -836,6 +855,5 @@ la $t1, Cards	# Adress of the array
 
 
 # To do:
-# 1. Keep working on the money.
-# 2. Do a "Play other hand" option.
-# 3. Automate translations with a function that receives in parameters the adress to the message in english and spanish.
+# 1. Implement a game over message if the user's money is equal to zero.
+# 2. Automate translations with a function that receives in parameters the adress to the message in english and spanish.
