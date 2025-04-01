@@ -153,11 +153,13 @@ game:
 
 li $t0, 10
 mtc1 $t0, $f20		# The players money starts being 10
+cvt.s.w $f20, $f20  	# The money being played will be by default 0
 
 gamepostmoneyinitialization:
 askforbet:
 
-cvt.s.w $f20, $f20  	# The money being played will be by default 0
+
+sub.s $f21, $f21, $f21  	# The money being played will be by default 0
 	
 la $a0, askforbetmessage
 li $v0, 4
@@ -855,5 +857,4 @@ la $t1, Cards	# Adress of the array
 
 
 # To do:
-# 1. Implement a game over message if the user's money is equal to zero.
-# 2. Automate translations with a function that receives in parameters the adress to the message in english and spanish.
+# 1. Automate translations with a function that receives in parameters the adress to the message in english and spanish.
