@@ -13,7 +13,7 @@ rastorage: .space 4
 player1_name: .space  48
 
 menu_mensaje : .asciiz "\n\n**BIENVENIDO A ASM-BLACKJACK** \n Trabajo hecho por alejandromolto. \n \n OPCIONES: \n \n (1) Jugar al blackjack. \n (2) Opciones. \n (3) Salida. \n \nElige tu opción: "
-menu_message : .asciiz "\n\n**WELLCOME TO ASM-BLACKJACK** \n Work done by alejandromolto. \n \n OPTIONS: \n \n (1) Play blackjack. \n (2) Settings. \n (3) Exit. \n \n Choose your option: "
+menu_message : .asciiz "\n\n**WELCOME TO ASM-BLACKJACK** \n Work done by alejandromolto. \n \n OPTIONS: \n \n (1) Play blackjack. \n (2) Settings. \n (3) Exit. \n \n Choose your option: "
 opciones_mensaje: .asciiz "\n\n**SETTINGS MENU**\n\n(1) Change language\n(2) Exit\n \nElige tu opción:"
 settings_message: .asciiz "\n\n**MENÚ DE CONFIGURACIÓN**\n\n(1) Cambiar idioma\n(2) Salir\n\nChoose your option: "
 lenguaje_mensaje: .asciiz "\n\n**MENÚ DE IDIOMA**\n\n(1) Inglés\n(2) Español \n(3) Salir\n\nElige tu opción:"
