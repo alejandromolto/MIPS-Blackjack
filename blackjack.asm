@@ -8,6 +8,7 @@
 
 Cards: .space 88  ## Array that stores the cards
 .align 2
+rastorage: .space 4
 
 player1_name: .space  48
 
@@ -23,7 +24,7 @@ game_starting: .asciiz "\nThe match is going to start. The dealer is handling th
 empezando_juego: .asciiz "\nLa partida va a comenzar. El croupier está barajando las cartas..."
 dialogue: .asciiz ">"
 yougot: .asciiz "\nYou have got the "
-tienesel: .asciiz "\nTienes el: "
+tienesel: .asciiz "\Has obtenido el "
 dealerhas: .asciiz "\n\nThe dealer shows a "
 eldealertiene: .asciiz "\nEl croupier muestra un "
 theothercard: .asciiz "\nThe other card is upside down."
@@ -32,27 +33,35 @@ pressEnter: .asciiz "\nPress enter to continue.\n"
 presionaEnter: .asciiz "\nPresiona enter para continuar.\n"
 ofclubs: .asciiz " of clubs"
 ofhearts: .asciiz " of hearts"
-ofdiamonds: .asciiz " of diamonds"
+ofdiamonds: .asciiz " of diamonds\n"
 ofspades: .asciiz " of spades"
-depicas: .asciiz " de picas"
-decorazones: .asciiz " de corazones"
-dediamantes: .asciiz " de diamantes"
-deespadas: .asciiz " de espadas"
+depicas: .asciiz " de picas\n"
+decorazones: .asciiz " de corazones\n"
+dediamantes: .asciiz " de diamantes\n"
+deespadas: .asciiz " de espadas\n"
 sumcards: .asciiz "\nThe sum of your cards is currently "
+sumadecartas: .asciiz "\nLa suma de tus cartas es actualmente: "
 gameoptions: .asciiz "\n\nOPTIONS: \n \n (1) Hit. \n (2) Stay. \n (3) Double. \n \n Choose your option: "
 opcionesjuego: .asciiz "\n\nOPTIONS: \n \n (1) Pedir. \n (2) Plantarse. \n (3) Doblar. \n \n Elige tu opción: "
 youlost: .asciiz "\n**YOU LOST**\nBetter luck next time!\n"
+hasperdido: .asciiz "\n**HAS PERDIDO**\nSuerte la próxima vez!\n"
 sumcardsdealer: .asciiz "\nThe sum of the dealer's cards is currently "
+sumacartasdealer: .asciiz "\nLa suma de las cartas del dealer es actualmente  "
 dealerbusted: .asciiz "\nThe dealer has busted!\nYou won!\n"
-drawmessage: .asciiz "\nThere has been a draw!"
+drawmessage: .asciiz "\nThere has been a draw!\n"
+empatemensaje: .asciiz "\nHa habido un empate\n"
 userwinsmessage: .asciiz "\n**YOU WON**\n"
+usuarioganamensaje: .asciiz "\n**GANASTE**\n"
 askforbetmessage: .asciiz "\n\HOW MUCH DO YOU WANT TO BET?\nWrite the amount: "
+cuantoapuestasmensaje: .asciiz "\n\CUANTO QUIERES APOSTAR?\nEscribe la cantidad:  "
 wrongbet: .asciiz "\nYou cannot bet more than the amount of money that you have\n"
+apuestaequivocada: .asciiz "\nNo puedes apostar más que la cantidad de dinero que tienes.\n"
 balancemessage: .asciiz "\nYour current balance is: \n"
-anotherhandmessage: .asciiz "\n\**DO YOU WANT TO PLAY ANOTHER HAND?** \n \n (1) Yes. \n (2) No (Exit). \nChoose your option: "
+balancemensaje: .asciiz "\nTu balance actual: \n"
+anotherhandmessage: .asciiz "\n\**DO YOU WANT TO PLAY ANOTHER HAND?** \n \n (1) Yes. \n (2) No (Exit). \n\nChoose your option: "
+otramanomensaje: .asciiz "\n\**QUIERES JUGAR OTRA MANO?** \n \n (1) Sí. \n (2) No (Salir). \n\nElige tu opción: "
+
 ## VALUES
-
-
 
 ## MAIN
 .text
@@ -68,18 +77,10 @@ li $s0, 1
 mainmenu:
 	
 	## If language = 1, then the message displays in english. Any other value for s0 displays the message in espanish (esp1).
-	addi $t0, $s0, -1
-	bnez $t0, esp1
 	
 	la $a0, menu_message
-	li $v0, 4
-	syscall
-	j ask_option
-	
-	esp1:
-		la $a0, menu_mensaje
-		li $v0, 4
-		syscall
+	la $a1, menu_mensaje
+	jal Translator
 	
 	ask_option: 
 
@@ -93,10 +94,10 @@ mainmenu:
 	beq $v0, $t1, game 
 	beq $v0, $t2, language_menu
 	beq $v0, $t3, exit 
-
+	
 	la $a0, invalid_option
-	li $v0, 4
-	syscall
+	la $a1, opcion_invalida
+	jal Translator	
 	j ask_option	
 
 
@@ -108,17 +109,10 @@ language_menu:
 
 	## If language = 1, then the message displays in english. Any other value for $s0 displays the message in espanish (esp2).
 	addi $t0, $s0, -1
-	bnez $t0, esp2
 	
 	la $a0, language_message
-	li $v0, 4
-	syscall
-	j ask_language
-	
-	esp2:
-		la $a0, lenguaje_mensaje
-		li $v0, 4
-		syscall
+	la $a1, lenguaje_mensaje
+	jal Translator
 	
 	ask_language: 
 
@@ -132,10 +126,11 @@ language_menu:
 	beq $v0, $t1, set_english
 	beq $v0, $t2, set_spanish
 	beq $v0, $t3, mainmenu 
-
-	la $a0 invalid_option
-	li $v0, 4
-	syscall
+	
+	la $a0, invalid_option
+	la $a1, opcion_invalida
+	jal Translator	
+	
 	j ask_language	
 
 	set_english:
@@ -162,9 +157,9 @@ askforbet:
 sub.s $f21, $f21, $f21  	# The money being played will be by default 0
 	
 la $a0, askforbetmessage
-li $v0, 4
-syscall
-
+la $a1, cuantoapuestasmensaje
+jal Translator	
+	
 li $v0, 6
 syscall
 
@@ -192,18 +187,10 @@ li $s7, 0	# Number of cards of the croupier
 	
 	## If language = 1, then the message displays in english. Any other value for s0 displays the message in espanish (esp1).
 	addi $t0, $s0, -1
-	bnez $t0, esp3
-	
+
 	la $a0, game_starting
-	li $v0, 4
-	syscall
-	j start_game
-	
-	esp3:
-		la $a0, empezando_juego
-		li $v0, 4
-		syscall
-	
+	la $a1, empezando_juego
+	jal Translator
 	
 	
 	start_game:
@@ -229,25 +216,25 @@ li $s7, 0	# Number of cards of the croupier
 	
 	# Player one cards (stored in $s1, $s2)
 	
-	la $a0, yougot		# "You got" message
-	li $v0, 4
-	syscall
-
+	la $a0, yougot	# "You got" message
+	la $a1, tienesel
+	jal Translator
+	
 	move $a0, $s1	
 	jal TranslateCard
 	
-	la $a0, yougot		# "You got" message
-	li $v0, 4
-	syscall
+	la $a0, yougot	# "You got" message
+	la $a1, tienesel
+	jal Translator
 	
 	move $a0, $s2
 	jal TranslateCard	
 	
 	# Sum of the cards
 	
-	la $a0, sumcards
-	li $v0, 4
-	syscall
+	la $a0, sumcards		
+	la $a1, sumadecartas
+	jal Translator	
 	
 	la $a0, Cards
 	move $a1, $s6
@@ -279,18 +266,17 @@ li $s7, 0	# Number of cards of the croupier
 	li $a0, 10
 	li $v0, 11
 	syscall
-	
-	la $a0, dealerhas		# "Dealer has" message
-	li $v0, 4
-	syscall
 
+	la $a0, dealerhas	# "Dealer has" message
+	la $a1, menu_mensaje
+	jal Translator
 
 	move $a0, $s4
 	jal TranslateCard
 
-	la $a0, theothercard		# "The other card" message
-	li $v0, 4
-	syscall
+	la $a0, theothercard	# "The other card" message
+	la $a1, laotracarta
+	jal Translator
 
 li $s3, 0	# iteration variable
 li $a3, 2
@@ -314,9 +300,9 @@ gameloop:
 		lw $t1, 0($t2)
 		addi $s3, $s3, 4	# number of iteration multiplied by 4
 	
-		la $a0, yougot		# "You got" message
-		li $v0, 4
-		syscall
+		la $a0, yougot	# "You got" message
+		la $a1, tienesel
+		jal Translator
 	
 		move $a0, $t1
 		jal TranslateCard
@@ -326,11 +312,11 @@ gameloop:
 
 
 	# Sum of the cards
-	
-		la $a0, sumcards
-		li $v0, 4
-		syscall
-	
+		
+		la $a0, sumcards		
+		la $a1, sumadecartas
+		jal Translator	
+		
 		la $a0, Cards
 		move $a1, $t3
 		move $s3, $t3
@@ -367,9 +353,9 @@ gameloop:
 	stay:
 		# Second card print
 		
-		la $a0, dealerhas		# "Dealer has" message
-		li $v0, 4
-		syscall
+		la $a0, dealerhas	# "Dealer has" message
+		la $a1, menu_mensaje
+		jal Translator
 		
 		la $a0, Cards
 		addi $a0, $a0, 48
@@ -377,8 +363,8 @@ gameloop:
 		jal TranslateCard
 		
 		la $a0, sumcardsdealer		# Dealer sum message
-		li $v0, 4
-		syscall
+		la $a1, sumacartasdealer
+		jal Translator
 		
 		la $a0, Cards
 		addi $a0, $a0, 44
@@ -403,7 +389,7 @@ gameloop:
 		li $v0, 11
 		syscall
 		
-
+		
 								
 		dealerloop:
 			
@@ -429,10 +415,10 @@ gameloop:
 			DealerHit:
 				addi $s7, $s7, 1
 			
-				la $a0, dealerhas		# "Dealer has" message
-				li $v0, 4
-				syscall
-			
+				la $a0, dealerhas	# "Dealer has" message
+				la $a1, menu_mensaje
+				jal Translator
+				
 				la $a0, Cards
 				addi $a0, $a0, 44
 				addi $t1, $s7, -1
@@ -442,8 +428,8 @@ gameloop:
 				jal TranslateCard
 				
 				la $a0, sumcardsdealer		# Dealer sum message
-				li $v0, 4
-				syscall
+				la $a1, sumacartasdealer
+				jal Translator
 		
 				la $a0, Cards
 				addi $a0, $a0, 44
@@ -491,41 +477,45 @@ gameloop:
 	blt $s3, $s7, housewins	
 	
 	userwins:
-	la $a0, userwinsmessage
-	li $v0, 4
-	syscall
-	
+
+	la $a0, userwinsmessage		# YOU LOST
+	la $a1, usuarioganamensaje
+	jal Translator	
+				
 	add.s $f21, $f21, $f21
 	add.s $f20, $f20, $f21
 	j endhand
 	
 	draw:
-	la $a0, drawmessage
-	li $v0, 4
-	syscall
+	
+	la $a0, drawmessage		# YOU DRAW
+	la $a1, empatemensaje
+	jal Translator	
 	
 	add.s $f20, $f20, $f21
 	j endhand
 		
 	housewins:
-	la $a0, youlost
-	li $v0, 4
-	syscall
+	la $a0, youlost		# HOUSE WINS
+	la $a1, hasperdido
+	jal Translator	
 	j endhand
 
 endhand:
-	la $a0, balancemessage
-	li $v0, 4
-	syscall
+	la $a0, balancemessage		# HOUSE WINS
+	la $a1, balancemensaje
+	jal Translator	
+	
+	#balancemensaje
 	
 	mov.s $f12, $f20
 	li $v0, 2
 	syscall
-	
-	la $a0, anotherhandmessage
-	li $v0, 4
-	syscall
-	
+
+	la $a0, anotherhandmessage		# HOUSE WINS
+	la $a1, otramanomensaje
+	jal Translator	
+		
 	li $v0, 5
 	syscall
 	
@@ -543,6 +533,23 @@ exit:
 
 ## SUBRUTINES
 
+Translator: # This function receives to $a0 the adress of the message in english and $a1 the adress of the message in spanish (and $s0 stores the lenguage)
+
+
+bne $s0, 1, spanishmessage
+
+li $v0, 4
+syscall
+jr $ra
+
+spanishmessage:
+move $a0, $a1
+li $v0, 4
+syscall
+jr $ra
+
+
+
 GameOptionsMenu: # This function returns a option (hit(1), stay(2), double(3)) to $v0
 la $a0, gameoptions
 li $v0, 4
@@ -556,9 +563,12 @@ syscall
 		beq $v0, 2, returnoption	
 		beq $v0, 3, returnoption	
 		
-		la $a0, invalid_option
-		li $v0, 4
-		syscall
+		addi $t0, $ra, 12
+		sw $t0, rastorage
+		la $a0, invalid_option		# Opcion invalida
+		la $a1, opcion_invalida
+		jal Translator
+		lw $ra, rastorage
 		j askforvalidgameoption
 		
 returnoption:
@@ -652,20 +662,12 @@ ContinueOption:
 
 ## If language = 1, then the message displays in english. Any other value for s0 displays the message in espanish (esp4).
 addi $t0, $s0, -1
-bnez $t0, esp4
 
+sw $ra, rastorage
 la $a0, pressEnter
-li $v0, 4
-syscall
-j continuewiththecontinue
-
-
-esp4:
-la $a0, presionaEnter
-li $v0, 4
-syscall
-
-continuewiththecontinue:
+la $a1, presionaEnter
+jal Translator
+lw $ra, rastorage
 
 li $a0, '>'
 li $v0, 11
@@ -745,27 +747,35 @@ beq $t1, $t4, hearts
 beq $t1, $t5, spades
 
 clubs:
-la $a0, ofclubs
-li $v0, 4
-syscall
+sw $ra, rastorage
+la $a0, ofclubs		
+la $a1, depicas
+jal Translator
+lw $ra, rastorage
 jr $ra
 
 diamonds:
-la $a0, ofdiamonds
-li $v0, 4
-syscall
+sw $ra, rastorage
+la $a0, ofdiamonds		
+la $a1, dediamantes
+jal Translator
+lw $ra, rastorage
 jr $ra
 
 hearts:
-la $a0, ofhearts
-li $v0, 4
-syscall
+sw $ra, rastorage
+la $a0, ofhearts		
+la $a1, decorazones
+jal Translator
+lw $ra, rastorage
 jr $ra
 
 spades:
-la $a0, ofspades
-li $v0, 4
-syscall
+sw $ra, rastorage
+la $a0, ofspades		
+la $a1, deespadas
+jal Translator
+lw $ra, rastorage
 jr $ra
 
 
@@ -854,7 +864,3 @@ la $t1, Cards	# Adress of the array
 
 	back_to_main2:
 		jr $ra
-
-
-# To do:
-# 1. Automate translations with a function that receives in parameters the adress to the message in english and spanish.
